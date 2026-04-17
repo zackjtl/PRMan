@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { apiBaseDescription, apiUrl } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 
 type ApiErr = { error?: string }
@@ -38,7 +39,7 @@ export function PrototypeHome() {
     setMeJson(null)
     try {
       const headers = await authHeader()
-      const res = await fetch('/api/me', { headers })
+      const res = await fetch(apiUrl('/api/me'), { headers })
       const body = (await res.json()) as Record<string, unknown> & ApiErr
       if (!res.ok) throw new Error(body.error ?? res.statusText)
       setMeJson(JSON.stringify(body, null, 2))
@@ -55,7 +56,7 @@ export function PrototypeHome() {
     setItemsJson(null)
     try {
       const headers = await authHeader()
-      const res = await fetch('/api/prototype-items', { headers })
+      const res = await fetch(apiUrl('/api/prototype-items'), { headers })
       const body = (await res.json()) as { items?: unknown } & ApiErr
       if (!res.ok) throw new Error(body.error ?? res.statusText)
       setItemsJson(JSON.stringify(body.items ?? body, null, 2))
@@ -66,12 +67,15 @@ export function PrototypeHome() {
     }
   }
 
-  const signInGoogle = async () => {
+  const signInGoogle = async (pickAccount = false) => {
     setErr(null)
     const redirectTo = `${window.location.origin}/auth/callback`
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        ...(pickAccount ? { queryParams: { prompt: 'select_account' } } : {}),
+      },
     })
     if (error) setErr(error.message)
   }
@@ -108,10 +112,18 @@ export function PrototypeHome() {
             <button
               type="button"
               disabled={busy}
-              onClick={() => void signInGoogle()}
+              onClick={() => void signInGoogle(false)}
               className="inline-flex items-center justify-center rounded-lg bg-zinc-100 px-4 py-2.5 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:opacity-50"
             >
-              使用 Google 登入（Supabase Auth）
+              使用 Google 登入
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void signInGoogle(true)}
+              className="text-left text-xs text-zinc-500 underline decoration-zinc-600/60 underline-offset-2 transition hover:text-zinc-400 disabled:opacity-50"
+            >
+              使用其他 Google 帳號…
             </button>
             <p className="text-left text-xs leading-relaxed text-zinc-500">
               本機登入成功後應回到 <code className="text-zinc-400">/auth/callback</code>
@@ -188,6 +200,13 @@ export function PrototypeHome() {
           </pre>
         </section>
       ) : null}
+
+      <footer className="mt-20 border-t border-white/[0.06] pt-4 text-center text-[11px] leading-relaxed text-zinc-600">
+        <span className="text-zinc-500">後端 API：</span>
+        <span className="break-all font-mono text-zinc-600/90">
+          {apiBaseDescription()}
+        </span>
+      </footer>
     </div>
   )
 }
